@@ -7,7 +7,7 @@ class SystemD(object):
         self.plugin_name = 'systemd'
         self.interval = 60.0
         self.verbose_logging = False
-        self.services = []
+        self.unit_names = []
         self.units = {}
 
     def log_verbose(self, msg):
@@ -34,18 +34,18 @@ class SystemD(object):
             self.units[name] = unit
         return self.units[name]
 
-    def get_service_state(self, name):
+    def get_unit_state(self, name):
         unit = self.get_unit(name)
         if not unit:
             return 'broken'
         else:
-            return unit.Get('org.freedesktop.systemd1.Unit', 'SubState')
+            return unit.Get('org.freedesktop.systemd1.Unit', 'ActiveState')
 
     def configure_callback(self, conf):
         for node in conf.children:
             vals = [str(v) for v in node.values]
-            if node.key == 'Service':
-                self.services = vals
+            if node.key == 'Unit':
+                self.unit_names = vals
             elif node.key == 'Interval':
                 self.interval = float(vals[0])
             elif node.key == 'Verbose':
@@ -53,27 +53,26 @@ class SystemD(object):
             else:
                 raise ValueError('{} plugin: Unknown config key: {}'
                                  .format(self.plugin_name, node.key))
-        if not self.services:
-            self.log_verbose('No services defined in configuration')
+        if not self.unit_names:
+            self.log_verbose('No units defined in configuration')
             return
         self.init_dbus()
         collectd.register_read(self.read_callback, self.interval)
-        self.log_verbose('Configured with services={}, interval={}'
-                         .format(self.services, self.interval))
+        self.log_verbose('Configured with units={}, interval={}'
+                         .format(self.unit_names, self.interval))
 
     def read_callback(self):
         self.log_verbose('Read callback called')
-        for name in self.services:
-            full_name = name + '.service'
-            state = self.get_service_state(full_name)
-            value = (1.0 if state == 'running' else 0.0)
+        for name in self.unit_names:
+            state = self.get_unit_state(name)
+            value = (1.0 if state == 'active' else 0.0)
             self.log_verbose('Sending value: {}.{}={} (state={})'
                              .format(self.plugin_name, name, value, state))
             val = collectd.Values(
                 type='gauge',
                 plugin=self.plugin_name,
                 plugin_instance=name,
-                type_instance='running',
+                type_instance='active',
                 values=[value])
             val.dispatch()
 
