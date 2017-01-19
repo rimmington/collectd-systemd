@@ -10,8 +10,8 @@ collectd-systemd
     :alt: Coverage
     :target: https://coveralls.io/github/mbachry/collectd-systemd?branch=master
 
-A `collectd`_ plugin which checks if given `systemd`_ services are in
-"running" state and sends `graphite`_ metrics with ``1.0`` or ``0.0``
+A `collectd`_ plugin which checks if given `systemd`_ units are in
+"active" state and sends `graphite`_ metrics with ``1.0`` or ``0.0``
 value.
 
 The plugin is particularly useful together with `grafana's alerting`_.
@@ -42,26 +42,26 @@ Copy ``collectd_systemd.py`` to collectd Python plugin directory
         Import "collectd_systemd"
 
         <Module collectd_systemd>
-            Service sshd nginx postgresql
+            Unit "nginx.service" "postgresql.service" "mnt-nfs.mount"
         </Module>
     </Plugin>
 
 Restart collectd daemon and open grafana web ui. Add a new graph with
 following query::
 
-    aliasSub(collectd.*.systemd-*.gauge-running, '.+systemd-(.+)\..+', '\1')
+    aliasSub(collectd.*.systemd-*.gauge-active, '.+systemd-(.+)\..+', '\1')
 
-You should see all configured systemd services in the graph. Now it's
+You should see all configured systemd units in the graph. Now it's
 enough to add an alert for values lower than ``1.0`` to be paged when
-services are down.
+units are down.
 
 Configuration
 -------------
 
 Following configuration options are supported:
 
-* ``Service``: one or more systemd services to monitor. Separate
-  multiple services with spaces.
+* ``Unit``: one or more systemd units to monitor. Wrap unit names in quotes and
+  separate multiple units with spaces.
 
 * ``Interval``: check interval. It's ok to keep the default (60 seconds)
 
